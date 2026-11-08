@@ -6,8 +6,8 @@
 
     <style>
         /* =====================================
-                           PAGE HEADING
-                        ===================================== */
+                                                               PAGE HEADING
+                                                            ===================================== */
 
         .page-heading {
             display: flex;
@@ -19,8 +19,8 @@
         }
 
         /* =====================================
-                           ACCOUNT SUMMARY
-                        ===================================== */
+                                                               ACCOUNT SUMMARY
+                                                            ===================================== */
 
         .account-summary {
             display: grid;
@@ -69,8 +69,8 @@
         }
 
         /* =====================================
-                           FILTER
-                        ===================================== */
+                                                               FILTER
+                                                            ===================================== */
 
         .filter-grid {
             display: grid;
@@ -84,8 +84,8 @@
         }
 
         /* =====================================
-                           ACCOUNT TABLE
-                        ===================================== */
+                                                               ACCOUNT TABLE
+                                                            ===================================== */
 
         .account-name {
             display: block;
@@ -279,8 +279,8 @@
         }
 
         /* =====================================
-                           STATUS BADGE
-                        ===================================== */
+                                                               STATUS BADGE
+                                                            ===================================== */
 
         .status {
             display: inline-flex;
@@ -303,8 +303,8 @@
         }
 
         /* =====================================
-                           EDIT MODAL
-                        ===================================== */
+                                                               EDIT MODAL
+                                                            ===================================== */
 
         .account-modal-overlay {
             position: fixed;
@@ -418,6 +418,89 @@
             color: #097612;
         }
 
+        /* SELECT2 MASTER AKUN */
+
+        .account-search .select2-container {
+            width: 100% !important;
+        }
+
+        .account-search .select2-container--default .select2-selection--single {
+            height: 40px;
+            border: 1px solid #dce8df;
+            border-radius: 8px;
+            background: #ffffff;
+        }
+
+        .account-search .select2-selection--single .select2-selection__rendered {
+            line-height: 38px;
+            padding-left: 12px;
+            padding-right: 35px;
+            color: #344b3c;
+            font-size: 12px;
+        }
+
+        .account-search .select2-selection--single .select2-selection__placeholder {
+            color: #929d95;
+        }
+
+        .account-search .select2-selection--single .select2-selection__arrow {
+            height: 38px;
+            right: 7px;
+        }
+
+        .account-search .select2-container--default.select2-container--open .select2-selection--single {
+            border-color: #08a653;
+        }
+
+        .account-search .select2-dropdown {
+            border: 1px solid #dcefe1;
+            border-radius: 9px;
+            overflow: hidden;
+            box-shadow: 0 8px 24px rgba(8, 100, 55, .12);
+        }
+
+        .account-search .select2-search__field {
+            border: 1px solid #dce8df !important;
+            border-radius: 7px !important;
+            padding: 8px 10px !important;
+            font-size: 12px !important;
+            outline: none !important;
+        }
+
+        .account-search .select2-results__option {
+            padding: 10px 12px;
+            font-size: 12px;
+            color: #344b3c;
+        }
+
+        .account-search .select2-container--default .select2-results__option--highlighted[aria-selected] {
+            background: #eaf8f0;
+            color: #078b48;
+        }
+
+        .account-search .select2-container--default .select2-results__option--selected {
+            background: #08a653;
+            color: #ffffff;
+        }
+
+        /* PAKSA DROPDOWN SELECT2 TAMPIL DI BAWAH */
+
+        .account-search {
+            position: relative;
+        }
+
+        .account-search>.select2-container--open {
+            z-index: 9999 !important;
+        }
+
+        .account-search .select2-dropdown {
+            z-index: 9999 !important;
+        }
+
+        .account-search .select2-container--open .select2-dropdown {
+            margin-top: 0;
+        }
+
         .account-modal-body {
             padding: 24px 25px;
         }
@@ -485,8 +568,8 @@
         }
 
         /* =====================================
-                           RESPONSIVE
-                        ===================================== */
+                                                               RESPONSIVE
+                                                            ===================================== */
 
         @media(max-width: 750px) {
             .filter-grid {
@@ -652,14 +735,34 @@
 
                 <div class="form-group search-field account-search">
 
-                    <label class="form-label" for="accountSearchInput">
+                    <label class="form-label" for="accountSearchSelect">
                         Cari Akun
                     </label>
 
-                    <input type="text" id="accountSearchInput" name="q" value="{{ $search }}"
-                        placeholder="Cari nama atau username..." autocomplete="off">
+                    @php
+                        $selectedAccount = $accountOptions->first(function ($account) use ($search) {
+                            return strcasecmp($account->nama_pengguna, $search) === 0 ||
+                                strcasecmp($account->nama, $search) === 0;
+                        });
+                    @endphp
 
-                    <div id="accountSuggestions" class="account-suggestions" hidden></div>
+                    {{-- Menyimpan kata kunci untuk dikirim ke controller --}}
+                    <input type="hidden" name="q" id="accountSearchInput" value="{{ $search }}">
+
+                    {{-- Select2 pencarian lokal --}}
+                    <select id="accountSearchSelect" class="form-control" style="width:100%">
+
+                        <option value=""></option>
+
+                        @foreach ($accountOptions as $accountOption)
+                            <option value="{{ $accountOption->nama_pengguna }}"
+                                data-role-id="{{ $accountOption->peran_id }}"
+                                data-status="{{ $accountOption->status_aktif ? '1' : '0' }}" @selected($selectedAccount && $selectedAccount->id == $accountOption->id)>
+                                {{ $accountOption->nama }} — {{ '@' . $accountOption->nama_pengguna }}
+                            </option>
+                        @endforeach
+
+                    </select>
 
                 </div>
 
@@ -1212,7 +1315,13 @@
      JAVASCRIPT
 ===================================== --}}
 
+@push('styles')
+    <link href="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/css/select2.min.css" rel="stylesheet" />
+@endpush
+
 @push('scripts')
+    <script src="https://code.jquery.com/jquery-3.7.1.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/js/select2.min.js"></script>
     <script>
         document.addEventListener('DOMContentLoaded', function() {
 
@@ -1463,127 +1572,212 @@
 
         });
 
-        document.addEventListener('DOMContentLoaded', function() {
-            const input = document.getElementById('accountSearchInput');
-            const dropdown = document.getElementById('accountSuggestions');
+        // SELECT2 AUTOCOMPLETE MASTER AKUN
+        // PENCARIAN LOKAL TANPA AJAX
 
-            if (!input || !dropdown) return;
+        $(document).ready(function() {
 
-            const suggestionUrl = @json(route('mobil-cinta.admin.akun.suggest'));
+            const select = $('#accountSearchSelect');
+            const keyword = $('#accountSearchInput');
 
-            let searchTimer = null;
-            let requestNumber = 0;
+            const roleFilter = $('#peran_id');
+            const statusFilter = $('#status');
 
-            function hideSuggestions() {
-                dropdown.hidden = true;
-                dropdown.innerHTML = '';
+            const dropdownParent = $('.account-search');
+
+            if (!select.length || !keyword.length || !$.fn.select2) {
+                return;
             }
 
-            function showEmptyMessage() {
-                dropdown.innerHTML = '';
+            const form = select.closest('form')[0];
 
-                const empty = document.createElement('div');
-                empty.className = 'account-suggestion-empty';
-                empty.textContent = 'Tidak ditemukan akun yang cocok.';
+            // FILTER HASIL SELECT2
+            function accountMatcher(params, data) {
 
-                dropdown.appendChild(empty);
-                dropdown.hidden = false;
-            }
-
-            function renderSuggestions(accounts) {
-                dropdown.innerHTML = '';
-
-                if (!accounts.length) {
-                    showEmptyMessage();
-                    return;
+                // Jangan proses placeholder.
+                if (!data.id) {
+                    return data;
                 }
 
-                accounts.forEach(function(account) {
-                    const button = document.createElement('button');
-                    button.type = 'button';
-                    button.className = 'account-suggestion-item';
+                const option = data.element;
 
-                    const name = document.createElement('span');
-                    name.className = 'account-suggestion-name';
-                    name.textContent = account.nama;
+                const selectedRole = roleFilter.val() || '';
+                const selectedStatus = statusFilter.val() || '';
 
-                    const username = document.createElement('span');
-                    username.className = 'account-suggestion-username';
-                    username.textContent = '@' + account.nama_pengguna;
+                const accountRole = option.dataset.roleId || '';
+                const accountStatus = option.dataset.status || '';
 
-                    button.appendChild(name);
-                    button.appendChild(username);
+                // FILTER PERAN
+                if (
+                    selectedRole &&
+                    accountRole !== String(selectedRole)
+                ) {
+                    return null;
+                }
 
-                    button.addEventListener('click', function() {
-                        // Username bersifat unik sehingga hasil pencarian lebih spesifik.
-                        input.value = account.nama_pengguna;
+                // FILTER STATUS
+                if (
+                    selectedStatus !== '' &&
+                    accountStatus !== String(selectedStatus)
+                ) {
+                    return null;
+                }
 
-                        hideSuggestions();
+                // PENCARIAN NAMA DAN USERNAME
+                const term = $.trim(params.term || '').toLowerCase();
+                const accountText = (data.text || '').toLowerCase();
 
-                        if (input.form) {
-                            input.form.requestSubmit();
-                        }
+                if (!term) {
+                    return data;
+                }
+
+                return accountText.includes(term) ? data : null;
+            }
+
+            // INISIALISASI SELECT2
+            select.select2({
+                placeholder: 'Pilih / Cari Nama atau Username',
+                allowClear: true,
+                width: '100%',
+                minimumResultsForSearch: 0,
+                dropdownParent: dropdownParent,
+
+                matcher: accountMatcher,
+
+                language: {
+                    noResults: function() {
+                        return 'Tidak ditemukan akun yang sesuai filter.';
+                    }
+                }
+            });
+
+            // PAKSA DROPDOWN TETAP TERBUKA KE BAWAH
+            select.on('select2:open', function() {
+
+                requestAnimationFrame(function() {
+
+                    const selectionContainer = select.next('.select2-container');
+
+                    const dropdownContainer = dropdownParent
+                        .children('.select2-container--open')
+                        .filter(function() {
+                            return $(this).find('.select2-dropdown').length > 0;
+                        })
+                        .last();
+
+                    if (!selectionContainer.length || !dropdownContainer.length) {
+                        return;
+                    }
+
+                    const topPosition =
+                        selectionContainer.position().top +
+                        selectionContainer.outerHeight() + 6;
+
+                    dropdownContainer.css({
+                        top: topPosition + 'px',
+                        bottom: 'auto'
                     });
 
-                    dropdown.appendChild(button);
+                    dropdownContainer
+                        .removeClass('select2-dropdown--above')
+                        .addClass('select2-dropdown--below');
+
+                    selectionContainer
+                        .removeClass('select2-container--above')
+                        .addClass('select2-container--below');
+
                 });
 
-                dropdown.hidden = false;
+            });
+
+            // PERBARUI DROPDOWN SAAT FILTER BERUBAH
+            function refreshAccountDropdown() {
+
+                const instance = select.data('select2');
+
+                // Periksa apakah dropdown sedang terbuka.
+                if (instance && instance.isOpen()) {
+
+                    const searchField = $('.select2-container--open .select2-search__field');
+                    const currentTerm = searchField.val() || '';
+
+                    select.select2('close');
+                    select.select2('open');
+
+                    // Pulihkan kata yang sedang diketik.
+                    setTimeout(function() {
+
+                        const newSearchField = $(
+                            '.select2-container--open .select2-search__field'
+                        );
+
+                        newSearchField
+                            .val(currentTerm)
+                            .trigger('input');
+
+                    }, 0);
+                }
             }
 
-            input.addEventListener('input', function() {
-                clearTimeout(searchTimer);
+            // Bersihkan pilihan lama jika sudah tidak sesuai filter.
+            function clearSelectionIfExcluded() {
 
-                const keyword = input.value.trim();
-                const currentRequest = ++requestNumber;
+                const selectedOption = select.find(':selected');
 
-                if (!keyword) {
-                    hideSuggestions();
+                if (!selectedOption.val()) {
                     return;
                 }
 
-                searchTimer = setTimeout(async function() {
-                    try {
-                        const response = await fetch(
-                            suggestionUrl + '?q=' + encodeURIComponent(keyword), {
-                                headers: {
-                                    'Accept': 'application/json',
-                                    'X-Requested-With': 'XMLHttpRequest'
-                                }
-                            }
-                        );
+                const selectedRole = roleFilter.val() || '';
+                const selectedStatus = statusFilter.val() || '';
 
-                        if (!response.ok) {
-                            throw new Error('Gagal mengambil saran akun.');
-                        }
+                const accountRole = selectedOption.attr('data-role-id') || '';
+                const accountStatus = selectedOption.attr('data-status') || '';
 
-                        const accounts = await response.json();
+                const roleMismatch =
+                    selectedRole && accountRole !== String(selectedRole);
 
-                        // Abaikan respons lama jika user sudah mengetik lagi.
-                        if (currentRequest !== requestNumber) return;
+                const statusMismatch =
+                    selectedStatus !== '' &&
+                    accountStatus !== String(selectedStatus);
 
-                        renderSuggestions(accounts);
+                if (roleMismatch || statusMismatch) {
 
-                    } catch (error) {
-                        console.error(error);
-                        hideSuggestions();
-                    }
-                }, 250);
-            });
+                    select.val(null).trigger('change.select2');
+                    keyword.val('');
 
-            // Tutup dropdown ketika klik di luar kolom pencarian.
-            document.addEventListener('click', function(event) {
-                if (!event.target.closest('.account-search')) {
-                    hideSuggestions();
                 }
+            }
+
+            roleFilter.add(statusFilter).on('change', function() {
+
+                clearSelectionIfExcluded();
+                refreshAccountDropdown();
+
             });
 
-            // Tutup dropdown dengan tombol Escape.
-            input.addEventListener('keydown', function(event) {
-                if (event.key === 'Escape') {
-                    hideSuggestions();
+            // PILIH AKUN
+            select.on('select2:select', function(event) {
+
+                keyword.val(event.params.data.id);
+
+                if (form) {
+                    form.requestSubmit();
                 }
+
             });
+
+            // HAPUS PILIHAN AKUN
+            select.on('select2:clear', function() {
+
+                keyword.val('');
+
+                if (form) {
+                    form.requestSubmit();
+                }
+
+            });
+
         });
     </script>
 @endpush
