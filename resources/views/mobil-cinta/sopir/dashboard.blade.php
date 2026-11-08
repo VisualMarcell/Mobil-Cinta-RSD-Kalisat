@@ -254,7 +254,7 @@
         }
 
         /* Input tetap ada untuk dikirim sebagai multipart/form-data,
-                                                   tetapi pemilihan foto dilakukan melalui popup kamera. */
+                                                                                                           tetapi pemilihan foto dilakukan melalui popup kamera. */
         .driver-camera-input {
             position: absolute;
             width: 1px;
@@ -412,6 +412,11 @@
             width: 100%;
             height: 100%;
             object-fit: cover;
+            transform: none;
+        }
+
+        /* Mirror hanya untuk kamera depan */
+        .driver-camera-video-wrap video.is-front-camera {
             transform: scaleX(-1);
         }
 
@@ -429,8 +434,24 @@
         }
 
         .driver-camera-actions button {
-            flex: 1;
+            flex: 1 1 0;
+            min-width: 0;
             min-height: 44px;
+        }
+
+        .driver-camera-actions #captureDriverPhoto {
+            flex: 1 1 0;
+        }
+
+        .driver-camera-actions .driver-camera-switch {
+            flex: 1 1 0;
+            width: auto;
+            height: 44px;
+            padding: 0;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 21px;
         }
 
         .gps-coordinate-grid {
@@ -463,6 +484,10 @@
         }
 
         @media (max-width: 700px) {
+            .driver-dashboard {
+                padding-bottom: calc(85px + env(safe-area-inset-bottom));
+            }
+
             .driver-welcome {
                 padding: 18px;
                 border-radius: 14px;
@@ -611,6 +636,10 @@
                             <strong>{{ $journey->room?->nama_ruangan ?? '—' }}</strong>
                         </div>
                         <div class="driver-info-item">
+                            <small>Alamat Tujuan</small>
+                            <strong>{{ $journey->tujuan ?: '—' }}</strong>
+                        </div>
+                        <div class="driver-info-item">
                             <small>Kendaraan</small>
                             <strong>{{ $journey->vehicle?->nomor_polisi ?? '—' }}</strong>
                         </div>
@@ -665,7 +694,7 @@
                             </div>
 
                             <button type="button" class="btn btn-outline get-gps">
-                                <i class="bx bx-current-location"></i> Ambil lokasi GPS
+                                <i class="bx bx-refresh"></i> Refresh
                             </button>
                             <span class="gps-message driver-gps-message" role="status">
                                 Lokasi wajib direkam sebelum dikirim.
@@ -704,6 +733,10 @@
                         <div class="driver-info-item">
                             <small>No. rekam medis</small>
                             <strong>{{ $journey->nomor_rekam_medis }}</strong>
+                        </div>
+                        <div class="driver-info-item">
+                            <small>Alamat Tujuan</small>
+                            <strong>{{ $journey->tujuan ?: '—' }}</strong>
                         </div>
                         <div class="driver-info-item">
                             <small>Kendaraan</small>
@@ -831,7 +864,11 @@
             </p>
 
             <div class="driver-camera-actions">
-                <button type="button" class="btn btn-outline" id="cancelDriverCamera">Batal</button>
+                <button type="button" class="btn btn-outline driver-camera-switch" id="switchDriverCamera"
+                    aria-label="Ganti kamera" title="Ganti kamera">
+                    <i class="bx bx-refresh"></i>
+                </button>
+
                 <button type="button" class="btn btn-primary" id="captureDriverPhoto" disabled>
                     <i class="bx bx-camera"></i> Ambil Foto
                 </button>
@@ -850,10 +887,17 @@
             const title = document.getElementById('driverCameraTitle');
             const message = document.getElementById('driverCameraMessage');
             const captureButton = document.getElementById('captureDriverPhoto');
+            const switchCameraButton = document.getElementById('switchDriverCamera');
 
             let cameraStream = null;
             let targetInput = null;
             let targetForm = null;
+
+            // Default kamera belakang
+            let currentFacingMode = 'environment';
+
+            // Kamera yang benar-benar digunakan oleh browser
+            let activeFacingMode = 'environment';
 
             function stopCamera() {
                 if (cameraStream) {
@@ -871,32 +915,25 @@
                 modal.hidden = true;
             }
 
-            async function openCamera(button) {
-                targetForm = button.closest('form');
-                targetInput = document.getElementById(button.dataset.cameraInput);
 
-                if (!targetForm || !targetInput) return;
-
-                title.textContent = button.dataset.cameraTitle || 'Ambil Foto';
-                message.textContent = 'Meminta izin kamera...';
+            async function startCamera(strictFacing = false) {
                 captureButton.disabled = true;
-                modal.hidden = false;
+                switchCameraButton.disabled = true;
 
-                if (!window.isSecureContext || !navigator.mediaDevices?.getUserMedia) {
-                    message.textContent =
-                        'Kamera membutuhkan HTTPS atau localhost dan browser yang mendukung kamera.';
-                    return;
-                }
+                message.textContent = 'Menyiapkan kamera...';
+
+                stopCamera();
 
                 try {
-                    stopCamera();
-
                     cameraStream = await navigator.mediaDevices.getUserMedia({
                         audio: false,
                         video: {
-                            facingMode: {
-                                ideal: 'environment'
+                            facingMode: strictFacing ? {
+                                exact: currentFacingMode
+                            } : {
+                                ideal: currentFacingMode
                             },
+
                             width: {
                                 ideal: 1280
                             },
@@ -909,14 +946,108 @@
                     video.srcObject = cameraStream;
                     await video.play();
 
+                    // Baca kamera yang benar-benar aktif
+                    const videoTrack = cameraStream.getVideoTracks()[0];
+                    const cameraSettings = videoTrack.getSettings();
+
+                    activeFacingMode =
+                        cameraSettings.facingMode || currentFacingMode;
+
+                    // Mirror hanya jika kamera depan
+                    video.classList.toggle(
+                        'is-front-camera',
+                        activeFacingMode === 'user'
+                    );
+
                     captureButton.disabled = false;
-                    message.textContent = 'Posisikan objek, lalu tekan Ambil Foto.';
+                    switchCameraButton.disabled = false;
+
+                    switchCameraButton.innerHTML =
+                        '<i class="bx bx-refresh"></i>';
+
+                    switchCameraButton.title =
+                        currentFacingMode === 'environment' ?
+                        'Ganti ke kamera depan' :
+                        'Ganti ke kamera belakang';
+
+                    switchCameraButton.setAttribute(
+                        'aria-label',
+                        switchCameraButton.title
+                    );
+
+                    message.textContent =
+                        activeFacingMode === 'environment' ?
+                        'Kamera belakang aktif. Foto tidak menggunakan mirror.' :
+                        'Kamera depan aktif. Posisikan objek, lalu ambil foto.';
+
+                    return true;
+
                 } catch (error) {
                     console.error('Camera error:', error);
+
+                    cameraStream = null;
+                    captureButton.disabled = true;
+                    switchCameraButton.disabled = false;
+
                     message.textContent =
-                        'Kamera tidak dapat dibuka. Periksa izin kamera pada browser atau perangkat.';
+                        'Kamera tidak tersedia. Periksa izin kamera atau perangkat.';
+
+                    return false;
                 }
             }
+
+            async function openCamera(button) {
+                targetForm = button.closest('form');
+                targetInput = document.getElementById(button.dataset.cameraInput);
+
+                if (!targetForm || !targetInput) return;
+
+                title.textContent = button.dataset.cameraTitle || 'Ambil Foto';
+                message.textContent = 'Meminta izin kamera...';
+
+                // Setiap membuka popup, mulai dari kamera belakang
+                currentFacingMode = 'environment';
+
+                captureButton.disabled = true;
+                modal.hidden = false;
+
+                if (
+                    !window.isSecureContext ||
+                    !navigator.mediaDevices?.getUserMedia
+                ) {
+                    message.textContent =
+                        'Kamera membutuhkan HTTPS atau localhost dan browser yang mendukung kamera.';
+                    return;
+                }
+
+                await startCamera(false);
+            }
+
+            // Switch kamera depan dan belakang
+            switchCameraButton.addEventListener('click', async () => {
+                if (!cameraStream) return;
+
+                const previousFacingMode = currentFacingMode;
+
+                currentFacingMode =
+                    previousFacingMode === 'environment' ?
+                    'user' :
+                    'environment';
+
+                const switched = await startCamera(true);
+
+                if (!switched) {
+                    // Jika kamera tujuan tidak tersedia,
+                    // kembalikan ke kamera sebelumnya.
+                    currentFacingMode = previousFacingMode;
+
+                    const restored = await startCamera(false);
+
+                    message.textContent = restored ?
+                        'Kamera tujuan tidak tersedia. Kamera sebelumnya dipulihkan.' :
+                        'Kamera tidak dapat dibuka. Periksa izin kamera perangkat.';
+                }
+            });
 
             function canvasToBlob(canvas, quality) {
                 return new Promise((resolve, reject) => {
@@ -949,12 +1080,15 @@
                     });
                     if (!context) throw new Error('Browser tidak dapat memproses foto.');
 
-                    // Membuat hasil foto mirror secara horizontal
-                    context.translate(canvas.width, 0);
-                    context.scale(-1, 1);
+                    // Mirror hanya untuk kamera depan.
+                    if (activeFacingMode === 'user') {
+                        context.translate(canvas.width, 0);
+                        context.scale(-1, 1);
+                    }
 
+                    // Kamera belakang digambar normal.
                     context.drawImage(
-                        video,
+                        sourceVideo,
                         0,
                         0,
                         canvas.width,
@@ -1027,7 +1161,6 @@
             });
 
             document.getElementById('closeDriverCamera').addEventListener('click', closeCamera);
-            document.getElementById('cancelDriverCamera').addEventListener('click', closeCamera);
 
             modal.addEventListener('click', event => {
                 if (event.target === modal) closeCamera();
@@ -1054,11 +1187,14 @@
                 if (cameraButton) openCamera(cameraButton);
             }, true);
 
-            // GPS tetap direkam melalui geolocation browser.
+
+            // GPS otomatis saat panel dibuka.
+            // Tombol hanya digunakan untuk refresh lokasi secara manual.
             document.querySelectorAll('.gps-form').forEach(form => {
                 const button = form.querySelector('.get-gps');
                 const submit = form.querySelector('[type="submit"]');
                 const message = form.querySelector('.gps-message');
+                const panel = form.closest('.driver-action-panel');
 
                 const latitudeInput = form.querySelector(
                     '[name="latitude_berangkat"], [name="latitude_sampai"]'
@@ -1068,22 +1204,64 @@
                     '[name="longitude_berangkat"], [name="longitude_sampai"]'
                 );
 
-                if (!button || !submit || !message ||
-                    !latitudeInput || !longitudeInput) {
+                if (
+                    !button ||
+                    !submit ||
+                    !message ||
+                    !latitudeInput ||
+                    !longitudeInput
+                ) {
                     console.error('Elemen GPS tidak lengkap:', form);
                     return;
                 }
 
-                button.addEventListener('click', () => {
+                let gpsLoading = false;
+                const originalButtonHTML = button.innerHTML;
+
+                function getGPS(manual = false) {
+                    // Cegah permintaan GPS berjalan bersamaan.
+                    if (gpsLoading) return;
+
+                    // Kalau otomatis dan koordinat sudah tersedia,
+                    // tidak perlu mengambil ulang.
+                    if (
+                        !manual &&
+                        latitudeInput.value &&
+                        longitudeInput.value
+                    ) {
+                        return;
+                    }
+
+                    gpsLoading = true;
                     submit.disabled = true;
+                    button.disabled = true;
 
                     latitudeInput.value = '';
                     longitudeInput.value = '';
 
-                    message.textContent = 'Mengambil lokasi GPS...';
+                    button.innerHTML = '<i class="bx bx-loader-alt bx-spin"></i> Mencari lokasi...';
+
+                    message.textContent = manual ?
+                        'Memperbarui lokasi GPS...' :
+                        'Sedang mengambil lokasi GPS secara otomatis...';
+
+                    function selesai() {
+                        gpsLoading = false;
+                        button.disabled = false;
+                        button.innerHTML = originalButtonHTML;
+                    }
+
+                    if (!window.isSecureContext) {
+                        message.textContent =
+                            'GPS membutuhkan koneksi HTTPS atau localhost.';
+                        selesai();
+                        return;
+                    }
 
                     if (!navigator.geolocation) {
-                        message.textContent = 'Perangkat tidak mendukung GPS.';
+                        message.textContent =
+                            'Perangkat atau browser tidak mendukung GPS.';
+                        selesai();
                         return;
                     }
 
@@ -1100,22 +1278,55 @@
                                 coords.longitude.toFixed(7);
 
                             submit.disabled = false;
+                            selesai();
                         },
                         error => {
                             console.error('GPS error:', error);
 
-                            message.textContent =
-                                'GPS gagal diperoleh. Aktifkan izin lokasi dan coba lagi.';
+                            if (error.code === 1) {
+                                message.textContent =
+                                    'Izin lokasi ditolak. Aktifkan izin lokasi pada browser.';
+                            } else if (error.code === 2) {
+                                message.textContent =
+                                    'Lokasi belum tersedia. Periksa GPS perangkat.';
+                            } else if (error.code === 3) {
+                                message.textContent =
+                                    'Waktu pencarian GPS habis. Silakan refresh lokasi.';
+                            } else {
+                                message.textContent =
+                                    'GPS gagal diperoleh. Silakan refresh lokasi.';
+                            }
 
                             submit.disabled = true;
+                            selesai();
                         }, {
                             enableHighAccuracy: true,
-                            timeout: 15000,
+                            timeout: 30000,
                             maximumAge: 0
                         }
                     );
+                }
+
+                // Tombol hanya untuk mengambil koordinat terbaru.
+                button.addEventListener('click', () => {
+                    getGPS(true);
                 });
+
+                // Otomatis mengambil GPS saat panel dibuka.
+                if (panel) {
+                    panel.addEventListener('toggle', () => {
+                        if (panel.open) {
+                            getGPS(false);
+                        }
+                    });
+
+                    // Antisipasi jika panel sudah terbuka sejak awal.
+                    if (panel.open) {
+                        getGPS(false);
+                    }
+                }
             });
+
 
             window.addEventListener('beforeunload', stopCamera);
         })();
