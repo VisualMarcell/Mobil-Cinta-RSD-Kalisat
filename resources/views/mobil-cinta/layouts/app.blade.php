@@ -775,7 +775,7 @@
 
             .is-driver-app main {
                 margin: 17px auto 0;
-                padding: 0 13px calc(100px + env(safe-area-inset-bottom));
+                padding: 0 13px 12px;
             }
 
             .is-driver-app .mobile-driver-nav {
