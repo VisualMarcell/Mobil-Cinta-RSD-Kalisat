@@ -557,10 +557,84 @@
             </div>
 
 
-            {{-- PAGINATION --}}
+            {{-- PAGINATION CUSTOM --}}
             @if ($journeys->hasPages())
+                @php
+                    $currentPage = $journeys->currentPage();
+                    $lastPage = $journeys->lastPage();
+
+                    $startPage = max(1, $currentPage - 2);
+                    $endPage = min($lastPage, $currentPage + 2);
+
+                    // Mempertahankan filter pencarian dan tanggal.
+                    $historyPaginator = $journeys->appends(request()->query());
+                @endphp
+
                 <div class="history-pagination">
-                    {{ $journeys->links() }}
+
+                    <nav class="history-pagination-nav" aria-label="Navigasi halaman riwayat perjalanan">
+
+                        {{-- SEBELUMNYA --}}
+                        @if ($journeys->onFirstPage())
+                            <span class="history-page-link is-disabled">
+                                <i class="bx bx-chevron-left"></i>
+                            </span>
+                        @else
+                            <a href="{{ $historyPaginator->previousPageUrl() }}" class="history-page-link">
+                                <i class="bx bx-chevron-left"></i>
+                            </a>
+                        @endif
+
+                        {{-- HALAMAN PERTAMA --}}
+                        @if ($startPage > 1)
+                            <a href="{{ $historyPaginator->url(1) }}" class="history-page-number">
+                                1
+                            </a>
+
+                            @if ($startPage > 2)
+                                <span class="history-page-ellipsis">...</span>
+                            @endif
+                        @endif
+
+                        {{-- NOMOR HALAMAN --}}
+                        @for ($page = $startPage; $page <= $endPage; $page++)
+                            @if ($page === $currentPage)
+                                <span class="history-page-number is-active" aria-current="page">
+                                    {{ $page }}
+                                </span>
+                            @else
+                                <a href="{{ $historyPaginator->url($page) }}" class="history-page-number">
+                                    {{ $page }}
+                                </a>
+                            @endif
+                        @endfor
+
+                        {{-- HALAMAN TERAKHIR --}}
+                        @if ($endPage < $lastPage)
+
+                            @if ($endPage < $lastPage - 1)
+                                <span class="history-page-ellipsis">...</span>
+                            @endif
+
+                            <a href="{{ $historyPaginator->url($lastPage) }}" class="history-page-number">
+                                {{ $lastPage }}
+                            </a>
+
+                        @endif
+
+                        {{-- SELANJUTNYA --}}
+                        @if ($journeys->hasMorePages())
+                            <a href="{{ $historyPaginator->nextPageUrl() }}" class="history-page-link">
+                                <i class="bx bx-chevron-right"></i>
+                            </a>
+                        @else
+                            <span class="history-page-link is-disabled">
+                                <i class="bx bx-chevron-right"></i>
+                            </span>
+                        @endif
+
+                    </nav>
+
                 </div>
             @endif
 
@@ -1343,20 +1417,101 @@
             font-size: 12px;
         }
 
+        /* =========================================
+               PAGINATION CUSTOM MOBIL CINTA
+            ========================================= */
+
         .history-pagination {
             display: flex;
-            justify-content: flex-end;
-            margin-top: 18px;
+            justify-content: center;
+            align-items: center;
+            width: 100%;
+            margin-top: 22px;
+            padding-top: 16px;
+            border-top: 1px solid #edf2ee;
         }
 
-        .history-pagination nav {
+        .history-pagination-nav {
             display: flex;
             align-items: center;
+            justify-content: center;
+            flex-wrap: wrap;
+            gap: 7px;
+            width: 100%;
         }
 
-        .history-pagination nav a,
-        .history-pagination nav span {
+        .history-pagination .history-page-link,
+        .history-pagination .history-page-number {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            min-width: 36px;
+            min-height: 36px;
+            padding: 0 12px;
+
+            border: 1px solid #dcefe1;
+            border-radius: 8px;
+
+            background: #ffffff;
+            color: #078b48;
+
+            font-family: inherit;
             font-size: 12px;
+            font-weight: 700;
+            line-height: 1;
+
+            text-decoration: none;
+            white-space: nowrap;
+
+            transition: background .2s ease,
+                color .2s ease,
+                border-color .2s ease;
+        }
+
+        .history-pagination .history-page-link:hover,
+        .history-pagination .history-page-number:hover {
+            background: #eaf8f0;
+            border-color: #08a653;
+            color: #078b48;
+        }
+
+        .history-pagination .history-page-number.is-active {
+            background: #08a653;
+            border-color: #08a653;
+            color: #ffffff;
+            cursor: default;
+        }
+
+        .history-pagination .history-page-link.is-disabled {
+            background: #f7faf8;
+            border-color: #e7eee9;
+            color: #a0aca4;
+            cursor: not-allowed;
+            pointer-events: none;
+        }
+
+        .history-pagination .history-page-ellipsis {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            min-width: 20px;
+            color: #819086;
+            font-size: 13px;
+        }
+
+        /* RESPONSIVE */
+        @media (max-width: 520px) {
+            .history-pagination-nav {
+                gap: 5px;
+            }
+
+            .history-pagination .history-page-link,
+            .history-pagination .history-page-number {
+                min-width: 33px;
+                min-height: 34px;
+                padding: 0 9px;
+                font-size: 11px;
+            }
         }
 
         @media (max-width: 1100px) {
