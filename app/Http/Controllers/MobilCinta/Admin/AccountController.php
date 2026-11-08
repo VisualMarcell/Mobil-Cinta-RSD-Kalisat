@@ -40,14 +40,29 @@ class AccountController extends Controller
             $query->where('status_aktif', (int) $status);
         }
 
+        // Pagination daftar akun: 10 data per halaman.
         $accounts = $query->paginate(5)->withQueryString();
+
+        // Master akun untuk autocomplete Select2 lokal.
+        $accountOptions = Account::query()
+            ->orderBy('nama')
+            ->get([
+                'id',
+                'nama',
+                'nama_pengguna',
+                'peran_id',
+                'status_aktif',
+            ]);
+
         $roles = Role::orderBy('nama_peran')->get();
 
         $totalAccounts = Account::count();
+
         $activeAccounts = Account::where('status_aktif', true)->count();
 
         return view('mobil-cinta.admin.akun.index', compact(
             'accounts',
+            'accountOptions',
             'roles',
             'search',
             'roleId',
@@ -212,8 +227,8 @@ class AccountController extends Controller
         return back()->with(
             'status',
             $account->status_aktif
-                ? 'Akun berhasil diaktifkan.'
-                : 'Akun berhasil dinonaktifkan.'
+            ? 'Akun berhasil diaktifkan.'
+            : 'Akun berhasil dinonaktifkan.'
         );
     }
 
