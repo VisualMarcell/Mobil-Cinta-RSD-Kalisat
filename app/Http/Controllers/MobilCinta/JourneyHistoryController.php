@@ -89,7 +89,7 @@ class JourneyHistoryController extends Controller
             ->forAccount($account, $filters)
             ->latest('diajukan_pada')
             ->latest('id')
-            ->paginate(15)
+            ->paginate(10)
             ->withQueryString();
 
         /*
