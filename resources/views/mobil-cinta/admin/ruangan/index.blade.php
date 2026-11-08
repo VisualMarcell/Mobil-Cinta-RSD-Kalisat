@@ -588,17 +588,22 @@
 
         {{-- PAGINATION --}}
 
+        {{-- PAGINATION --}}
         @if ($ruangans->hasPages())
             <nav class="room-pagination" aria-label="Navigasi halaman">
 
+                {{-- PANAH KIRI --}}
                 @if ($ruangans->onFirstPage())
-                    <span class="disabled">‹</span>
+                    <span class="disabled" aria-label="Halaman sebelumnya">
+                        <i class="bx bx-chevron-left"></i>
+                    </span>
                 @else
-                    <a href="{{ $ruangans->previousPageUrl() }}">
-                        ‹
+                    <a href="{{ $ruangans->previousPageUrl() }}" aria-label="Halaman sebelumnya">
+                        <i class="bx bx-chevron-left"></i>
                     </a>
                 @endif
 
+                {{-- NOMOR HALAMAN --}}
                 @foreach ($ruangans->getUrlRange(max(1, $ruangans->currentPage() - 2), min($ruangans->lastPage(), $ruangans->currentPage() + 2)) as $page => $url)
                     @if ($page == $ruangans->currentPage())
                         <span class="active">{{ $page }}</span>
@@ -607,12 +612,15 @@
                     @endif
                 @endforeach
 
+                {{-- PANAH KANAN --}}
                 @if ($ruangans->hasMorePages())
-                    <a href="{{ $ruangans->nextPageUrl() }}">
-                        ›
+                    <a href="{{ $ruangans->nextPageUrl() }}" aria-label="Halaman selanjutnya">
+                        <i class="bx bx-chevron-right"></i>
                     </a>
                 @else
-                    <span class="disabled">›</span>
+                    <span class="disabled" aria-label="Halaman selanjutnya">
+                        <i class="bx bx-chevron-right"></i>
+                    </span>
                 @endif
 
             </nav>
